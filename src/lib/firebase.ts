@@ -9,9 +9,12 @@ import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
+// Check for live mode first (explicitly set), then fallback to demo detection
 const isDemoMode = import.meta.env.VITE_APP_MODE === 'demo' ||
-  !import.meta.env.VITE_FIREBASE_API_KEY ||
-  import.meta.env.VITE_FIREBASE_API_KEY === 'your-firebase-api-key';
+  (import.meta.env.VITE_APP_MODE !== 'live' && (
+    !import.meta.env.VITE_FIREBASE_API_KEY ||
+    import.meta.env.VITE_FIREBASE_API_KEY === 'your-firebase-api-key'
+  ));
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
