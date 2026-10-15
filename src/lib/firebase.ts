@@ -9,25 +9,11 @@ import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 
-// Check for live mode - if VITE_APP_MODE is explicitly set to "live", use live mode
-// Otherwise, only use demo mode if explicitly set to "demo" or if API key is missing
-const isDemoMode = import.meta.env.VITE_APP_MODE === 'live' 
-  ? false 
-  : (
-    import.meta.env.VITE_APP_MODE === 'demo' ||
-    !import.meta.env.VITE_FIREBASE_API_KEY ||
-    import.meta.env.VITE_FIREBASE_API_KEY === 'your-firebase-api-key'
-  );
+// FORCE LIVE MODE - environment variables not working in build
+const isDemoMode = false;
 
-// Debug logging (only in dev)
-if (import.meta.env.DEV) {
-  console.log('🔧 Firebase Config Debug:', {
-    isDemoMode,
-    VITE_APP_MODE: import.meta.env.VITE_APP_MODE,
-    hasApiKey: !!import.meta.env.VITE_FIREBASE_API_KEY,
-    apiKeyPreview: import.meta.env.VITE_FIREBASE_API_KEY?.substring(0, 10) + '...'
-  });
-}
+// Debug logging
+console.log('🔧 Firebase Mode: LIVE (forced)');
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -36,13 +22,12 @@ let storage: FirebaseStorage | null = null;
 
 if (!isDemoMode) {
   const firebaseConfig = {
-    apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId:             import.meta.env.VITE_FIREBASE_APP_ID,
-    measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+    apiKey:            "AIzaSyAx1fU2G88K-IiOEjnfsFDiTCxGwt_DArQ",
+    authDomain:        "burari-ekta-society-rwa.firebaseapp.com",
+    projectId:         "burari-ekta-society-rwa",
+    storageBucket:     "burari-ekta-society-rwa.firebasestorage.app",
+    messagingSenderId: "1051927920323",
+    appId:             "1:1051927920323:web:48bea42053dfc72f7d2c76",
   };
 
   app     = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
