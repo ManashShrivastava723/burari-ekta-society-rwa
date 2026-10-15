@@ -1,0 +1,193 @@
+rules_version = '2';
+//
+// Burari Ekta Society RWA — Firestore Security Rules
+// =======================================================
+// These rules are enforced on Firebase servers.
+// Client-side code cannot bypass them.
+// Deploy with: firebase deploy --only firestore:rules
+//
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------
+    // Helper functions
+    // -------------------------------------------------------
+
+    // Is the request authenticated?
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Get the calling user's role from the users collection.
+    // Using get() costs a read; cached in rule evaluation.
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isActive() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && isActive() && getRole() == role;
+    }
+
+    // Role hierarchy check
+    function isAtLeast(role) {
+      let roles = ['resident', 'staff', 'rwaAdmin', 'superAdmin'];
+      return isSignedIn() && isActive() &&
+        roles.indexOf(getRole()) >= roles.indexOf(role);
+    }
+
+    function isAdmin() {
+      return isAtLeast('rwaAdmin');
+    }
+
+    function isSuperAdmin() {
+      return hasRole('superAdmin');
+    }
+
+    // -------------------------------------------------------
+    // siteSettings — public read, admin write
+    // -------------------------------------------------------
+    match /siteSettings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // notices — public read (published only), admin write
+    // -------------------------------------------------------
+    match /notices/{noticeId} {
+      allow read: if resource.data.status == 'published';
+      allow read: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------
+    // events — public read (published only), admin write
+    // -------------------------------------------------------
+    match /events/{eventId} {
+      allow read: if resource.data.publishStatus == 'published';
+      allow read: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------
+    // documents — public read (published + isPublic), admin write
+    // -------------------------------------------------------
+    match /documents/{docId} {
+      allow read: if resource.data.publishStatus == 'published' && resource.data.isPublic == true;
+      allow read: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------
+    // gallery — public read (published), admin write
+    // -------------------------------------------------------
+    match /gallery/{imageId} {
+      allow read: if resource.data.publishStatus == 'published';
+      allow read: if isAdmin();
+      allow create, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------
+    // pages (editable content) — public read (published), admin write
+    // -------------------------------------------------------
+    match /pages/{pageId} {
+      allow read: if resource.data.publishStatus == 'published';
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // committeeMembers — public read (active), admin write
+    // -------------------------------------------------------
+    match /committeeMembers/{memberId} {
+      allow read: if resource.data.isActive == true;
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // complaints — SENSITIVE
+    // - Anyone can create (submit a complaint)
+    // - Only admins can read
+    // - Status updates by admins only
+    // - Never exposed to public
+    // -------------------------------------------------------
+    match /complaints/{complaintId} {
+      // Allow create with required fields
+      allow create: if
+        request.resource.data.keys().hasAll([
+          'referenceNumber', 'category', 'subject', 'description',
+          'submitterName', 'submitterContact', 'flatNumber',
+          'status', 'createdAt'
+        ]) &&
+        request.resource.data.status == 'submitted' &&
+        request.resource.data.submitterName is string &&
+        request.resource.data.submitterName.size() > 0 &&
+        request.resource.data.submitterName.size() <= 200;
+
+      // Only admins can read complaints
+      allow read, update: if isAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------
+    // contactMessages — anyone can create, only admins read
+    // -------------------------------------------------------
+    match /contactMessages/{msgId} {
+      allow create: if
+        request.resource.data.keys().hasAll(['name', 'email', 'subject', 'message', 'createdAt']) &&
+        request.resource.data.message.size() <= 5000;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // -------------------------------------------------------
+    // users — SENSITIVE
+    // - Authenticated users can read their own profile
+    // - Users CANNOT change their own role (enforced here)
+    // - Only superAdmins can write user records
+    // -------------------------------------------------------
+    match /users/{userId} {
+      // Read own profile
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      // Admins can read all user profiles
+      allow read: if isAdmin();
+
+      // Only superAdmin can create/update user records
+      allow create, update: if isSuperAdmin();
+
+      // Users cannot modify their own role or isActive status
+      allow update: if
+        isSignedIn() &&
+        request.auth.uid == userId &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['role', 'isActive']);
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // -------------------------------------------------------
+    // auditLogs — admins write, superAdmin read
+    // -------------------------------------------------------
+    match /auditLogs/{logId} {
+      allow create: if isAdmin();
+      allow read: if isSuperAdmin();
+      allow update, delete: if false; // Immutable
+    }
+
+    // -------------------------------------------------------
+    // Deny all other reads/writes
+    // -------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
