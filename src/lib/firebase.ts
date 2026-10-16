@@ -1,6 +1,7 @@
+﻿// Last deployed: 2026-10-16 12:21
 // ============================================================
 // Firebase initialization
-// Uses environment variables — never hardcoded credentials.
+// Uses environment variables â€” never hardcoded credentials.
 // In demo mode (VITE_APP_MODE=demo) Firebase is not initialized.
 // ============================================================
 
@@ -13,7 +14,7 @@ import { getStorage, type FirebaseStorage } from 'firebase/storage';
 const isDemoMode = false;
 
 // Debug logging
-console.log('🔧 Firebase Mode: LIVE (forced)');
+console.log('ðŸ”§ Firebase Mode: LIVE (forced)');
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
