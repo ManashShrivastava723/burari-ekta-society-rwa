@@ -1,17 +1,96 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db, isDemoMode } from '../../lib/firebase';
 import { Image, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DEMO_GALLERY } from '../../data/demoData';
-import { formatDate } from '../../utils/helpers';
+
+interface GalleryImage {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  category?: string;
+  uploadedAt: Date;
+}
 
 export default function GalleryPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const images = DEMO_GALLERY.filter((g) => g.publishStatus === 'published');
+  useEffect(() => {
+    fetchImages();
+  }, []);
+
+  const fetchImages = async () => {
+    if (isDemoMode) {
+      // Use demo data
+      const demoImages = DEMO_GALLERY.filter((g) => g.publishStatus === 'published').map(img => ({
+        id: img.id,
+        title: img.title,
+        description: img.description,
+        imageUrl: img.imageUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        category: img.eventName,
+        uploadedAt: img.createdAt
+      }));
+      setImages(demoImages);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const q = query(collection(db, 'gallery'), orderBy('uploadedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      const imagesList: GalleryImage[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        imagesList.push({
+          id: doc.id,
+          title: data.title,
+          description: data.description,
+          imageUrl: data.imageUrl,
+          thumbnailUrl: data.thumbnailUrl,
+          category: data.category,
+          uploadedAt: data.uploadedAt?.toDate() || new Date()
+        });
+      });
+      setImages(imagesList);
+    } catch (error) {
+      console.error('Error fetching images:', error);
+      // Fallback to demo data on error
+      const demoImages = DEMO_GALLERY.filter((g) => g.publishStatus === 'published').map(img => ({
+        id: img.id,
+        title: img.title,
+        description: img.description,
+        imageUrl: img.imageUrl,
+        thumbnailUrl: img.thumbnailUrl,
+        category: img.eventName,
+        uploadedAt: img.createdAt
+      }));
+      setImages(demoImages);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
   const prev = () => setLightboxIndex((i) => (i !== null ? (i - 1 + images.length) % images.length : null));
   const next = () => setLightboxIndex((i) => (i !== null ? (i + 1) % images.length : null));
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading gallery...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -94,14 +173,14 @@ export default function GalleryPage() {
             />
             <div className="text-center">
               <p className="text-white font-medium">{images[lightboxIndex].title}</p>
-              {images[lightboxIndex].eventName && (
-                <p className="text-gray-400 text-sm">{images[lightboxIndex].eventName}</p>
+              {images[lightboxIndex].category && (
+                <p className="text-gray-400 text-sm">{images[lightboxIndex].category}</p>
               )}
               {images[lightboxIndex].description && (
                 <p className="text-gray-400 text-sm">{images[lightboxIndex].description}</p>
               )}
               <p className="text-gray-500 text-xs mt-1">
-                {images[lightboxIndex].createdAt ? formatDate(images[lightboxIndex].createdAt) : ''}
+                {new Date(images[lightboxIndex].uploadedAt).toLocaleDateString()}
               </p>
             </div>
           </div>

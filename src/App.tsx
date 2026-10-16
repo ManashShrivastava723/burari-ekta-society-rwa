@@ -27,6 +27,8 @@ import AdminNoticesPage  from './pages/admin/AdminNoticesPage';
 import AdminComplaintsPage from './pages/admin/AdminComplaintsPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import AdminPlaceholderPage from './pages/admin/AdminPlaceholderPage';
+import AdminGalleryPage from './pages/admin/AdminGalleryPage';
+import AdminCommitteePage from './pages/admin/AdminCommitteePage';
 
 function PageLoader() {
   return (
@@ -94,11 +96,11 @@ export default function App() {
           <Route path="documents" element={<AdminPlaceholderPage title="Documents Management" />} />
           <Route path="documents/new" element={<AdminPlaceholderPage title="Upload Document" />} />
 
-          <Route path="gallery"   element={<AdminPlaceholderPage title="Gallery Management" />} />
-          <Route path="gallery/new" element={<AdminPlaceholderPage title="Upload Photo" />} />
+          <Route path="gallery"   element={<AdminGalleryPage />} />
+          <Route path="gallery/new" element={<AdminGalleryPage />} />
 
           <Route path="complaints" element={<AdminComplaintsPage />} />
-          <Route path="committee" element={<AdminPlaceholderPage title="Committee Management" />} />
+          <Route path="committee" element={<AdminCommitteePage />} />
           <Route path="pages"     element={<AdminPlaceholderPage title="Page Content Management" />} />
           <Route path="messages"  element={<AdminPlaceholderPage title="Contact Messages" />} />
           <Route path="map"       element={<AdminPlaceholderPage title="Map Location Settings" />} />
